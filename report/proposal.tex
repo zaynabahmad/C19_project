@@ -1,0 +1,216 @@
+\documentclass[11pt]{article}
+
+% ============================================================
+% Milestone 1 -- Project Proposal & Literature Review
+% Structure follows the course template (Sec. 6.1).
+% ============================================================
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[round]{natbib}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=blue!50!black, citecolor=blue!50!black, urlcolor=blue!50!black}
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+
+\title{\LARGE Project Proposal \& Literature Review \\[4pt]
+\large Blind Image Deblurring with a Compact Transformer}
+\author{
+  Zainab Ahmed (ID: 2501782) \and
+  Rawda Abdelkhalek (ID: 2500020)
+}
+\date{Milestone 1 --- 2 November 2026 \\{} CSE 681 --- Digital Image Processing}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Motion blur degrades images captured while the camera or the scene is moving, and
+removing it from a single image without knowing the blur kernel (blind deblurring) is
+a hard inverse problem. We plan to study whether a small, parameter-budgeted
+Transformer or hybrid CNN--Transformer can deblur images competitively with a classical
+Wiener-filter baseline at low cost. We will use a subsampled version of the GoPro
+deblurring dataset as the main benchmark, plus a small synthetically blurred DIV2K
+subset as a sanity check for the Wiener baseline, where the blur kernel is known.
+Methods will be compared on identical test images using PSNR, SSIM, and parameter count.
+\end{abstract}
+
+\section{Problem Statement \& Motivation}
+\label{sec:motivation}
+A blurred image can be modeled as a sharp image convolved with a blur kernel (the point
+spread function, PSF), plus noise. If the PSF is known, classical deconvolution
+methods such as Wiener filtering or Lucy--Richardson \citep{richardson1972,lucy1974}
+can restore the image. In real photographs, however, the kernel is unknown and often
+varies across the image, which makes the problem \emph{blind}. Deep networks learn the
+mapping from blurred to sharp images directly from paired examples
+\citep{nah2017,kupyn2019}, but the best-performing models can be large
+\citep{kong2023,mao2024}. Our goal is to build a deliberately small model and measure
+how it compares to the classical baseline in accuracy and in parameter count.
+
+This connects to the course material on image restoration and the Wiener-filter
+pipeline (Week 7, as referenced in the project catalog). \todo{Confirm the exact
+Week-7 topic name from the course syllabus.}
+
+\section{Related Work}
+\label{sec:related}
+\begin{table}[h]
+\centering
+\caption{Key references.}
+\label{tab:refs}
+\begin{tabular}{@{}p{0.30\linewidth}p{0.12\linewidth}p{0.45\linewidth}@{}}
+\toprule
+\textbf{Reference} & \textbf{Year} & \textbf{Relevance to this project} \\
+\midrule
+\citet{richardson1972}; \citet{lucy1974} & 1972; 1974 & Lucy--Richardson deconvolution: classical iterative baseline that assumes a known PSF. \\
+\citet{nah2017} & 2017 & Introduced the GoPro dynamic-scene deblurring dataset (our main benchmark). \\
+\citet{zamir2022} & 2022 & Efficient Transformer for high-resolution image restoration; a reference design for compact attention. \\
+\citet{kupyn2019} & 2019 & DeblurGAN-v2; heavier reference point named in the project catalog. \\
+\citet{kong2023} & 2023 & Frequency-domain Transformer for deblurring (recent, efficiency-oriented). \\
+\citet{mao2024} & 2024 & Local frequency-domain Transformer for deblurring (recent). \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Classical deconvolution recovers a sharp image when the PSF is known
+\citep{richardson1972,lucy1974}; its weakness for real photographs is that the kernel
+must be supplied or estimated. \citet{nah2017} addressed real dynamic-scene blur with a
+multi-scale convolutional network and released the GoPro pairs of blurred and sharp
+frames, which later work uses as a standard benchmark; the authors note that blur
+kernels are not provided because they are unknown. \citet{kupyn2019} is the heavier
+learned reference point suggested by the project catalog.
+
+Recent work applies Transformers to deblurring. \citet{kong2023} observe that attention
+can be computed in the frequency domain with an element-wise product instead of a matrix
+multiplication, and use this in the decoder of an asymmetric encoder--decoder network.
+\citet{mao2024} compute channel-wise self-attention inside local frequency-domain
+windows combined with an MLP gating mechanism. Both build on the line of efficient
+restoration Transformers represented by \citet{zamir2022}. These papers report strong
+accuracy; we have \emph{not} yet checked whether their models fit our compute budget, nor
+measured them ourselves. \todo{Add at least one truly lightweight deblurring Transformer
+from 2023--2026 (the catalog asks for 2--3 such papers) and verify its details before
+submission.}
+
+We do not claim a research gap beyond the project's stated objective: studying the
+accuracy-versus-parameter-budget trade-off of a small model against a classical baseline.
+
+\section{Dataset \& Baseline Plan}
+\label{sec:data}
+\textbf{Main dataset (GoPro).} The GoPro dataset of \citet{nah2017} contains 3214 blurred/sharp
+pairs: 2103 for training (22 sequences) and 1111 for testing (11 sequences). Because the
+official split is by sequence, train and test frames do not come from the same video.
+\textbf{Sanity-check dataset (DIV2K).} A small subset of sharp DIV2K images will be blurred
+synthetically with a known linear motion kernel, so that the Wiener filter can be checked
+in the setting where it is expected to work.
+
+\textbf{Subsampling plan (proposed, to be confirmed).} Uniformly take every $k$-th frame
+from each sequence, holding out whole sequences for validation so that validation frames
+are not near-duplicates of training frames. For example, $k=5$ would give about 420
+training and 222 test pairs. The exact counts, selection method, and random seed will be
+recorded in the repository (\texttt{data/README.md}) and in the report.
+
+\begin{table}[h]
+\centering
+\caption{Dataset summary.}
+\label{tab:data}
+\begin{tabular}{@{}p{0.2\linewidth}p{0.42\linewidth}p{0.28\linewidth}@{}}
+\toprule
+\textbf{Dataset} & \textbf{Subset used} & \textbf{Link / license} \\
+\midrule
+GoPro (GOPRO\_Large) & \todo{final counts; official split is 2103 train / 1111 test pairs} & \todo{official URL and license} \\
+DIV2K & \todo{e.g., 20--30 images, synthetic kernel, seed} & \todo{official URL and license} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Baseline.} Wiener-filter deconvolution (course Week 7 pipeline); Lucy--Richardson is an
+optional second classical baseline. The Wiener filter needs a PSF. On DIV2K the PSF is
+known. On GoPro it is not, so we will use a single assumed linear-motion kernel whose
+length and angle are chosen on the validation set, and we will state clearly that this
+is a weak, non-blind setting that gives the baseline no per-image kernel estimation.
+\todo{Confirm that this kernel strategy is acceptable, and cite the course source for the Wiener filter.}
+
+\section{Proposed Method}
+\label{sec:method}
+\textbf{Tentative plan (not yet confirmed).} The model takes a blurred RGB image and predicts
+the sharp image (or a residual added to the input). A small convolutional stem and
+encoder extract local features; a few Transformer blocks with an efficient (for example
+channel-wise) attention operate on the reduced-resolution features to capture global
+context; a convolutional decoder reconstructs the image. Compactness will be measured by
+total parameter count (and optionally inference time). The target parameter budget is
+\todo{fix a number after the first Colab test}.
+
+\textbf{Evaluation protocol.} PSNR and SSIM on the same held-out test images for every method,
+with identical preprocessing and a fixed random seed, plus parameter count. We make no
+claim that the proposed model will outperform the baseline, and we make no novelty
+claim from combining CNNs and Transformers; the final comparison will be reported as
+measured. A parameter-budget ablation is planned for the final milestone, as suggested
+by the project catalog.
+
+\section{Feasibility \& Compute Plan}
+\label{sec:feasibility}
+Compute tier: GPU-light. The team has no strong local GPU, so training will run on Google
+Colab (free tier or similar; the available GPU type is not guaranteed). The classical
+baseline runs on CPU. Time per training run has not been measured yet.
+\todo{Measure one short training run on Colab and state the expected time per experiment.}
+Subsampling (Section~\ref{sec:data}) keeps the data small enough for this setting.
+
+\subsection{Minimum Viable Deliverable (MVP)}
+Wiener baseline numbers (PSNR/SSIM) on the GoPro subset and the DIV2K sanity check, and one
+small model trained on the GoPro subset and evaluated on the same test images with PSNR,
+SSIM, and parameter count, giving one valid comparison table.
+
+\subsection{Stretch Goal}
+If the MVP is on track by Weeks 5--6: the parameter-budget ablation with several model
+sizes, Lucy--Richardson as a second baseline, and qualitative crops.
+\todo{Decide whether a small robotics-motivated extension (e.g., effect on a
+downstream task) is wanted; it is not included in the scope of this proposal.}
+
+\section{Risk Assessment}
+\label{sec:risk}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Unknown blur kernel for the Wiener baseline on GoPro.} Mitigation: DIV2K
+        sanity check with known kernel; explicit statement of the assumed-kernel limitation.
+  \item \textbf{Limited Colab compute and session time limits.} Mitigation: subsampled data,
+        small model, checkpoints saved regularly, short runs first.
+  \item \textbf{Team has limited deep-learning experience.} Mitigation: start from the smallest
+        working model and verify each step with a short experiment before scaling up.
+  \item \textbf{Dataset license or availability issues.} Mitigation: read the official license
+        before use; fall back to the DIV2K synthetic variant if GoPro cannot be used.
+  \item \textbf{Short milestone timeline.} Mitigation: the MVP is defined as the minimum
+        valid comparison, and extras are optional.
+\end{itemize}
+
+\section{Work Breakdown}
+\label{sec:workbreakdown}
+The course template assumes three students; our team has two, so the three catalog roles
+(Data \& Baseline, Model, Evaluation) are divided between two people.
+\todo{Confirm the division below and confirm with the instructor that two-person teams are accepted.}
+
+\begin{table}[h]
+\centering
+\caption{Milestone task allocation (draft; adapted from the project catalog entry).}
+\label{tab:tasks}
+\begin{tabular}{@{}p{0.12\linewidth}p{0.40\linewidth}p{0.40\linewidth}@{}}
+\toprule
+\textbf{Milestone} & \textbf{Zainab Ahmed} & \textbf{Rawda Abdelkhalek} \\
+\midrule
+M1 (Wk 3) & \todo{e.g., model design and evaluation protocol (PSNR/SSIM/params)} & \todo{e.g., GoPro/DIV2K subset pipeline and Wiener baseline} \\
+M2 (Wk 6) & \todo{e.g., compact model and first trained checkpoint} & \todo{e.g., full Wiener baseline on the subset and preliminary comparison} \\
+M3 (Wk 9) & \todo{e.g., final model and parameter-budget ablation} & \todo{e.g., final baseline table, full comparison, qualitative crops} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{AI-assistance disclosure.} Code scaffolding and drafting support for this
+proposal were AI-assisted (Claude); all references were checked and all results will be
+run and verified by the team.
+
+\bibliographystyle{unsrtnat}
+\bibliography{references}
+
+\end{document}

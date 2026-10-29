@@ -1,0 +1,7 @@
+# Pinned to the versions used when this scaffold was tested (Python 3.12).
+# Classical-baseline stack (M1). PyTorch will be added at M2 once the model
+# is chosen and tested on Colab -- it is deliberately NOT listed yet.
+numpy==2.4.4
+scipy==1.17.1
+scikit-image==0.26.0
+opencv-python-headless==4.13.0.92
