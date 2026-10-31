@@ -13,7 +13,7 @@ baseline.
 
 | Milestone                             | Status      |
 | ------------------------------------- | ----------- |
-| M1 proposal + Wiener baseline numbers | in progress |
+| M1 proposal + Wiener baseline numbers | DONE        |
 | M2 progress report                    | not started |
 | M3 final report                       | not started |
 
