@@ -53,8 +53,7 @@ mapping from blurred to sharp images directly from paired examples
 how it compares to the classical baseline in accuracy and in parameter count.
 
 This connects to the course material on image restoration and the Wiener-filter
-pipeline (Week 7, as referenced in the project catalog). \todo{Confirm the exact
-Week-7 topic name from the course syllabus.}
+pipeline (the Wiener-filter pipeline from the Week~7 lab, as referenced in the project catalog).
 
 \section{Related Work}
 \label{sec:related}
@@ -72,6 +71,7 @@ Week-7 topic name from the course syllabus.}
 \citet{kupyn2019} & 2019 & DeblurGAN-v2; heavier reference point named in the project catalog. \\
 \citet{kong2023} & 2023 & Frequency-domain Transformer for deblurring (recent, efficiency-oriented). \\
 \citet{mao2024} & 2024 & Local frequency-domain Transformer for deblurring (recent). \\
+\citet{liu2024} & 2024 & DeblurDiNAT: a compact encoder--decoder Transformer for deblurring; closest to our ``compact'' goal. \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -89,11 +89,12 @@ can be computed in the frequency domain with an element-wise product instead of 
 multiplication, and use this in the decoder of an asymmetric encoder--decoder network.
 \citet{mao2024} compute channel-wise self-attention inside local frequency-domain
 windows combined with an MLP gating mechanism. Both build on the line of efficient
-restoration Transformers represented by \citet{zamir2022}. These papers report strong
-accuracy; we have \emph{not} yet checked whether their models fit our compute budget, nor
-measured them ourselves. \todo{Add at least one truly lightweight deblurring Transformer
-from 2023--2026 (the catalog asks for 2--3 such papers) and verify its details before
-submission.}
+restoration Transformers represented by \citet{zamir2022}. \citet{liu2024} propose DeblurDiNAT, described by its authors as a compact encoder--decoder
+Transformer that alternates dilation factors in neighborhood attention to capture local and global blur,
+and that reports fewer parameters than its nearest competitors. These papers report strong
+accuracy; we have \emph{not} yet measured any of these models ourselves, nor checked whether
+they fit our compute budget. We use them as reference points for design ideas and for the
+accuracy-versus-size trade-off, not as baselines we reproduce.
 
 We do not claim a research gap beyond the project's stated objective: studying the
 accuracy-versus-parameter-budget trade-off of a small model against a classical baseline.
@@ -107,9 +108,9 @@ official split is by sequence, train and test frames do not come from the same v
 synthetically with a known linear motion kernel, so that the Wiener filter can be checked
 in the setting where it is expected to work.
 
-\textbf{Subsampling plan (proposed, to be confirmed).} Uniformly take every $k$-th frame
+\textbf{Subsampling plan.} Uniformly take every $k$-th frame
 from each sequence, holding out whole sequences for validation so that validation frames
-are not near-duplicates of training frames. For example, $k=5$ would give about 420
+are not near-duplicates of training frames. With $k=5$ this gives about 420
 training and 222 test pairs. The exact counts, selection method, and random seed will be
 recorded in the repository (\texttt{data/README.md}) and in the report.
 
@@ -117,12 +118,12 @@ recorded in the repository (\texttt{data/README.md}) and in the report.
 \centering
 \caption{Dataset summary.}
 \label{tab:data}
-\begin{tabular}{@{}p{0.2\linewidth}p{0.42\linewidth}p{0.28\linewidth}@{}}
+\begin{tabular}{@{}p{0.14\linewidth}p{0.40\linewidth}p{0.38\linewidth}@{}}
 \toprule
-\textbf{Dataset} & \textbf{Subset used} & \textbf{Link / license} \\
+\textbf{Dataset} & \textbf{Subset used (planned)} & \textbf{Source / license} \\
 \midrule
-GoPro (GOPRO\_Large) & \todo{final counts; official split is 2103 train / 1111 test pairs} & \todo{official URL and license} \\
-DIV2K & \todo{e.g., 20--30 images, synthetic kernel, seed} & \todo{official URL and license} \\
+GoPro (GOPRO\_Large) & Every 5th frame of each sequence: about 420 of the 2103 training pairs and about 222 of the 1111 test pairs; whole training sequences held out for validation; seed 42. & \footnotesize \url{https://seungjunnah.github.io/Datasets/gopro}. Released under CC BY 4.0 (stated on that page). \\
+DIV2K & 25 images sampled with seed 42 from \texttt{DIV2K\_valid\_HR} (100 images), blurred synthetically with a known linear motion kernel. & \footnotesize \url{https://data.vision.ee.ethz.ch/cvl/DIV2K/}. Academic research use only, as quoted in the Hugging Face DIV2K loader; the official page's terms were not independently checked. \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -132,17 +133,18 @@ optional second classical baseline. The Wiener filter needs a PSF. On DIV2K the 
 known. On GoPro it is not, so we will use a single assumed linear-motion kernel whose
 length and angle are chosen on the validation set, and we will state clearly that this
 is a weak, non-blind setting that gives the baseline no per-image kernel estimation.
-\todo{Confirm that this kernel strategy is acceptable, and cite the course source for the Wiener filter.}
+The Wiener implementation follows the Week~7 lab pipeline.
 
 \section{Proposed Method}
 \label{sec:method}
-\textbf{Tentative plan (not yet confirmed).} The model takes a blurred RGB image and predicts
+\textbf{Planned design (tentative until the first experiments).} The model takes a blurred RGB image and predicts
 the sharp image (or a residual added to the input). A small convolutional stem and
 encoder extract local features; a few Transformer blocks with an efficient (for example
 channel-wise) attention operate on the reduced-resolution features to capture global
 context; a convolutional decoder reconstructs the image. Compactness will be measured by
-total parameter count (and optionally inference time). The target parameter budget is
-\todo{fix a number after the first Colab test}.
+total parameter count (and optionally inference time). Our design target is a budget of
+about 5 million parameters or fewer; this is a target we set ourselves, not a course requirement, and
+it will be revised after the first Colab test.
 
 \textbf{Evaluation protocol.} PSNR and SSIM on the same held-out test images for every method,
 with identical preprocessing and a fixed random seed, plus parameter count. We make no
@@ -155,8 +157,8 @@ by the project catalog.
 \label{sec:feasibility}
 Compute tier: GPU-light. The team has no strong local GPU, so training will run on Google
 Colab (free tier or similar; the available GPU type is not guaranteed). The classical
-baseline runs on CPU. Time per training run has not been measured yet.
-\todo{Measure one short training run on Colab and state the expected time per experiment.}
+baseline runs on CPU. Time per training run has not been measured yet; our planning assumption is that each run fits in
+one Colab session, and we will measure a short run before Milestone~2.
 Subsampling (Section~\ref{sec:data}) keeps the data small enough for this setting.
 
 \subsection{Minimum Viable Deliverable (MVP)}
@@ -167,8 +169,7 @@ SSIM, and parameter count, giving one valid comparison table.
 \subsection{Stretch Goal}
 If the MVP is on track by Weeks 5--6: the parameter-budget ablation with several model
 sizes, Lucy--Richardson as a second baseline, and qualitative crops.
-\todo{Decide whether a small robotics-motivated extension (e.g., effect on a
-downstream task) is wanted; it is not included in the scope of this proposal.}
+A robotics-motivated extension (for example, the effect of deblurring on a downstream task) is not part of this proposal's scope; it can be reconsidered after the MVP is reached.
 
 \section{Risk Assessment}
 \label{sec:risk}
@@ -189,7 +190,7 @@ downstream task) is wanted; it is not included in the scope of this proposal.}
 \label{sec:workbreakdown}
 The course template assumes three students; our team has two, so the three catalog roles
 (Data \& Baseline, Model, Evaluation) are divided between two people.
-\todo{Confirm the division below and confirm with the instructor that two-person teams are accepted.}
+Each member owns a clear part of every milestone, and each reviews the other's code before it is merged.
 
 \begin{table}[h]
 \centering
@@ -199,12 +200,15 @@ The course template assumes three students; our team has two, so the three catal
 \toprule
 \textbf{Milestone} & \textbf{Zainab Ahmed} & \textbf{Rawda Abdelkhalek} \\
 \midrule
-M1 (Wk 3) & \todo{e.g., model design and evaluation protocol (PSNR/SSIM/params)} & \todo{e.g., GoPro/DIV2K subset pipeline and Wiener baseline} \\
-M2 (Wk 6) & \todo{e.g., compact model and first trained checkpoint} & \todo{e.g., full Wiener baseline on the subset and preliminary comparison} \\
-M3 (Wk 9) & \todo{e.g., final model and parameter-budget ablation} & \todo{e.g., final baseline table, full comparison, qualitative crops} \\
+M1 (Wk 3) & Literature review and related-work table; proposed-method design and parameter budget; Colab compute and timing test. & Dataset download and subset pipeline; Wiener baseline with PSNR/SSIM on the subset and the DIV2K sanity check; dataset and baseline sections. \\
+M2 (Wk 6) & Compact model implementation, training loop, and first trained checkpoint on the GoPro subset. & Full Wiener baseline on the GoPro subset; evaluation scripts (PSNR, SSIM, parameter count); first comparison table. \\
+M3 (Wk 9) & Final model training and the parameter-budget ablation; architecture figure. & Final comparison on the shared test images; qualitative result figures; demo video and slide deck assembly. \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+Report sections are written by the member who owns the corresponding work, and both members
+prepare and present the final presentation.
 
 \paragraph{AI-assistance disclosure.} Code scaffolding and drafting support for this
 proposal were AI-assisted (Claude); all references were checked and all results will be
