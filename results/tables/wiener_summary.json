@@ -1,0 +1,36 @@
+{
+ "div2k_sanity_check": {
+  "n_images": 25,
+  "kernel_length": 15,
+  "noise_sigma": 0.01,
+  "seed": 42,
+  "limit": 0,
+  "mean_psnr_blurred": 23.281061685963163,
+  "mean_ssim_blurred": 0.6203922832012176,
+  "mean_psnr_K0.001": 18.815835306600285,
+  "mean_ssim_K0.001": 0.29733085036277773,
+  "mean_psnr_K0.01": 25.509618828247486,
+  "mean_ssim_K0.01": 0.608883171081543,
+  "mean_psnr_K0.03": 25.472718938839066,
+  "mean_ssim_K0.03": 0.7093392014503479,
+  "mean_psnr_K0.1": 22.45661334197497,
+  "mean_ssim_K0.1": 0.712207202911377
+ },
+ "gopro_test": {
+  "n_test": 223,
+  "blur_dir": "blur",
+  "seed": 42,
+  "limit": 0,
+  "tuned_on_n_val_pairs": 20,
+  "best_config": {
+   "length": 3,
+   "angle_deg": 45,
+   "K": 0.001,
+   "val_mean_psnr": 24.49363959724144
+  },
+  "mean_psnr_blurred": 25.550528099945154,
+  "mean_ssim_blurred": 0.7769421388482833,
+  "mean_psnr_wiener": 25.263936840768498,
+  "mean_ssim_wiener": 0.7661242738967519
+ }
+}
